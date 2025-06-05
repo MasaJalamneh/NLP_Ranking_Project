@@ -4,13 +4,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import re
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from scipy.stats import norm
+import numpy as np
 
 """
 NOTE: 
 for pandas : pip install pandas
 for seaborn: pip install seaborn
-
+for scipy  : pip install scipy
+for numpy  : pip install numpy
 """
 
 # Load the CSV file
@@ -92,3 +94,27 @@ plt.xlabel('Bias Type')
 plt.ylabel('Number of Products')
 plt.tight_layout()
 plt.show()
+
+
+
+""" 2. Votes """
+
+
+def wilson_score(helpful, total, confidence=0.95):
+    if total == 0:
+        return 0
+    z = norm.ppf(1 - (1 - confidence) / 2)
+    phat = helpful / total
+    return ((phat + z**2 / (2*total) - z * np.sqrt((phat*(1 - phat) + z**2 / (4*total)) / total)) / (1 + z**2 / total)) + 0.4
+
+
+
+# 1: compute bias per product
+df['wilson_score'] = df.apply(lambda row: wilson_score(row['helpful_votes'], row['total_votes']), axis=1)
+
+# After computing wilson_score for each review
+vote_score = df.groupby('product_id')['wilson_score'].mean().to_dict()
+
+print(df[['product_id', 'review_body', 'helpful_votes', 'total_votes', 'wilson_score']].head(30))
+
+
